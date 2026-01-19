@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
     <script>
-      tailwind.config = {
+      window.tailwind.config = {
         theme: {
           extend: {
             colors: {
@@ -24,6 +24,10 @@
     </script>
     <style>
         body { font-family: 'Inter', sans-serif; }
+        /* Ocultar barra de scroll en navegadores modernos */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #669900; border-radius: 10px; }
     </style>
 <script type="importmap">
 {
@@ -38,9 +42,9 @@
 }
 </script>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-slate-50 text-slate-900 overflow-x-hidden">
     <div id="root"></div>
-    <!-- Punto de entrada para el compilador de Vite -->
+    <!-- Vite inyectará aquí los scripts durante la compilación -->
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>

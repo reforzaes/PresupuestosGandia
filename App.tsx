@@ -14,6 +14,7 @@ const App: React.FC = () => {
   
   // Filtros
   const [search, setSearch] = useState('');
+  const [filterVendedor, setFilterVendedor] = useState('');
   const [filterSeccion, setFilterSeccion] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('');
   const [filterSellerType, setFilterSellerType] = useState<string>(''); 
@@ -41,12 +42,19 @@ const App: React.FC = () => {
     return s.sort();
   }, []);
 
+  // Vendedores únicos presentes en los datos
+  const uniqueSellers = useMemo(() => {
+    const s = Array.from(new Set(budgets.map(b => b.vendedor))).filter(Boolean);
+    return s.sort();
+  }, [budgets]);
+
   // Lógica de filtrado corregida y estricta
   const filteredBudgets = useMemo(() => {
     return budgets.filter(b => {
       // Normalización para comparación
-      const vendedorName = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
-      const sellerInfo = SELLER_DATA[vendedorName];
+      const vendedorNameRaw = b.vendedor ? b.vendedor.trim() : '';
+      const vendedorNameUpper = vendedorNameRaw.toUpperCase();
+      const sellerInfo = SELLER_DATA[vendedorNameUpper];
       
       // La SECCIÓN se toma de la base de datos oficial del vendedor
       const officialSection = sellerInfo?.section || b.seccion;
@@ -58,6 +66,9 @@ const App: React.FC = () => {
         b.id.toLowerCase().includes(cleanSearch) || 
         b.cliente.toLowerCase().includes(cleanSearch);
 
+      // Filtro de vendedor específico
+      const matchesVendedor = !filterVendedor || vendedorNameRaw === filterVendedor;
+
       // Filtro de sección: debe coincidir con la oficial del vendedor
       const matchesSeccion = !filterSeccion || officialSection === filterSeccion;
       
@@ -65,9 +76,9 @@ const App: React.FC = () => {
       const matchesSellerType = !filterSellerType || sellerType === filterSellerType;
       const matchesFechaCrea = !filterFechaCrea || (b.fechaCreacion && b.fechaCreacion.includes(filterFechaCrea));
       
-      return matchesSearch && matchesSeccion && matchesEstado && matchesSellerType && matchesFechaCrea;
+      return matchesSearch && matchesVendedor && matchesSeccion && matchesEstado && matchesSellerType && matchesFechaCrea;
     });
-  }, [budgets, search, filterSeccion, filterEstado, filterSellerType, filterFechaCrea]);
+  }, [budgets, search, filterVendedor, filterSeccion, filterEstado, filterSellerType, filterFechaCrea]);
 
   // Estadísticas basadas en los presupuestos FILTRADOS
   const stats = useMemo(() => {
@@ -118,12 +129,19 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 lg:flex items-center gap-2 flex-1 max-w-5xl">
+          <div className="grid grid-cols-2 lg:flex items-center gap-2 flex-1 max-w-6xl">
              <input 
                 type="text" placeholder="Acto o Cliente..."
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[140px]"
+                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
                 value={search} onChange={e => setSearch(e.target.value)}
              />
+             <select 
+                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[140px]"
+                value={filterVendedor} onChange={e => setFilterVendedor(e.target.value)}
+             >
+                <option value="">Vendedor (Todos)</option>
+                {uniqueSellers.map(v => <option key={v} value={v}>{v}</option>)}
+             </select>
              <select 
                 className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all"
                 value={filterSeccion} onChange={e => setFilterSeccion(e.target.value)}
@@ -135,15 +153,15 @@ const App: React.FC = () => {
                 className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all"
                 value={filterSellerType} onChange={e => setFilterSellerType(e.target.value)}
              >
-                <option value="">VP / VE (Todos)</option>
-                <option value="VP">Vendedor Proyecto (VP)</option>
-                <option value="VE">Vendedor Especialista (VE)</option>
+                <option value="">VP / VE</option>
+                <option value="VP">VP</option>
+                <option value="VE">VE</option>
              </select>
              <select 
                 className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all"
                 value={filterEstado} onChange={e => setFilterEstado(e.target.value)}
              >
-                <option value="">Estado (Cualquiera)</option>
+                <option value="">Estado</option>
                 {Object.values(BudgetStatus).map(s => <option key={s} value={s}>{s}</option>)}
              </select>
              <div className="flex flex-col bg-slate-50 border border-slate-200 p-1 rounded min-w-[90px]">
@@ -194,8 +212,8 @@ const App: React.FC = () => {
                   <tr className="text-slate-500 font-black uppercase tracking-widest italic text-[9px]">
                     <th className="px-6 py-4">Ref. Acto</th>
                     <th className="px-6 py-4">Cliente</th>
-                    <th className="px-6 py-4">Colaborador / Sección Oficial</th>
-                    <th className="px-6 py-4">Creación</th>
+                    <th className="px-6 py-4">Colaborador / Sección</th>
+                    <th className="px-6 py-4">Notas de Gestión</th>
                     <th className="px-6 py-4">Estado</th>
                     <th className="px-6 py-4 text-right">Total</th>
                     <th className="px-6 py-4">Acción</th>
@@ -212,7 +230,7 @@ const App: React.FC = () => {
                       <tr key={b.id} className="hover:bg-green-50/20 transition-colors">
                         <td className="px-6 py-4 font-mono font-bold text-slate-400">{b.id}</td>
                         <td className="px-6 py-4">
-                          <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[180px]">{b.cliente}</p>
+                          <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[160px]">{b.cliente}</p>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1.5 mb-1">
@@ -226,7 +244,9 @@ const App: React.FC = () => {
                           <p className="text-[9px] text-leroy-green font-black uppercase tracking-tighter">{sellerSection}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-[10px] text-slate-400 font-medium">{b.fechaCreacion || '--'}</span>
+                          <p className="text-[10px] text-slate-500 font-medium italic truncate max-w-[180px]" title={b.notas}>
+                            {b.notas || <span className="text-slate-300 italic">Sin observaciones...</span>}
+                          </p>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-0.5 rounded-[2px] text-[9px] font-black uppercase border ${STATUS_BG_COLORS[b.estado]}`}>

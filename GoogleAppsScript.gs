@@ -1,16 +1,6 @@
 
 /**
- * LEROY MERLIN - SCRIPT DE SINCRONIZACIÓN v3.0
- * 
- * INSTRUCCIONES DE INSTALACIÓN:
- * 1. En tu Google Sheet, ve a "Extensiones" > "Apps Script".
- * 2. Borra todo el código existente y pega este bloque.
- * 3. Haz clic en el icono del disco (Guardar).
- * 4. Haz clic en el botón azul "Implementar" > "Nueva implementación".
- * 5. Tipo: "Aplicación web".
- * 6. Ejecutar como: "Yo".
- * 7. Quién tiene acceso: "Cualquiera".
- * 8. Copia la "URL de la aplicación web" y pégala en el archivo services/googleSheetService.ts de la app.
+ * LEROY MERLIN - SCRIPT DE SINCRONIZACIÓN v3.1
  */
 
 const SHEET_NAME = "Presupuestos";
@@ -60,13 +50,12 @@ function doPost(e) {
     let rowFound = -1;
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][0]) === String(id)) {
-        rowFound = i + 1; // +1 porque las filas en Sheets son 1-indexed
+        rowFound = i + 1; 
         break;
       }
     }
     
     if (rowFound !== -1) {
-      // Actualizamos solo las columnas necesarias
       sheet.getRange(rowFound, 9).setValue(status);       // Col I: Estado
       sheet.getRange(rowFound, 10).setValue(fechaGestion); // Col J: Fecha Gestión
       sheet.getRange(rowFound, 12).setValue(notes);        // Col L: Notas
@@ -86,13 +75,22 @@ function doPost(e) {
 function formatDate(val) {
   if (!val) return "";
   if (val instanceof Date) {
-    return Utilities.formatDate(val, "GMT+1", "yyyy-MM-dd");
+    // Forzamos formato ISO para facilitar ordenación en el cliente
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
   }
-  // Si ya es un string, intentamos limpiar si viene con hora
-  if (typeof val === 'string' && val.includes('T')) {
-    return val.split('T')[0];
+  // Si es un string con formato europeo o similar, intentamos normalizar
+  let sVal = String(val);
+  if (sVal.includes('/')) {
+    let parts = sVal.split('/');
+    if (parts.length === 3) {
+      // Si viene como DD/MM/YYYY, lo pasamos a YYYY-MM-DD
+      if (parts[2].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
   }
-  return String(val);
+  if (sVal.includes('T')) {
+    return sVal.split('T')[0];
+  }
+  return sVal;
 }
 
 function createJsonResponse(obj) {

@@ -7,6 +7,11 @@ import DashboardCharts from './components/DashboardCharts';
 import BudgetModal from './components/BudgetModal';
 import { fetchBudgets, updateBudgetOnSheet } from './services/googleSheetService';
 
+type SortConfig = {
+  key: keyof Budget;
+  direction: 'asc' | 'desc';
+} | null;
+
 const App: React.FC = () => {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,16 +20,31 @@ const App: React.FC = () => {
   // Filtros
   const [search, setSearch] = useState('');
   const [filterVendedor, setFilterVendedor] = useState('');
-  const [filterSeccion, setFilterSeccion] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('');
-  const [filterSellerType, setFilterSellerType] = useState<string>(''); 
-  const [filterFechaCrea, setFilterFechaCrea] = useState('');
+  const [filterFechaInicio, setFilterFechaInicio] = useState('');
+  const [filterFechaFin, setFilterFechaFin] = useState('');
+
+  // Ordenación por defecto: Fecha más reciente primero
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'fechaCreacion', direction: 'desc' });
+
+  // Función robusa para normalizar fechas a ISO (YYYY-MM-DD) para lógica interna
+  const normalizeDate = (val: any): string => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return d.toISOString().split('T')[0];
+  };
 
   const loadData = async () => {
     setLoading(true);
     try {
       const data = await fetchBudgets();
-      setBudgets(data || []);
+      // Normalizamos las fechas al cargar para que los filtros funcionen
+      const normalizedData = (data || []).map(b => ({
+        ...b,
+        fechaCreacion: normalizeDate(b.fechaCreacion)
+      }));
+      setBudgets(normalizedData);
     } catch (err) {
       console.error("Error al cargar presupuestos:", err);
     } finally {
@@ -36,55 +56,74 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  // Secciones oficiales únicas
-  const sections = useMemo(() => {
-    const s = Array.from(new Set(Object.values(SELLER_DATA).map(d => d.section)));
-    return s.sort();
-  }, []);
+  // Función para formatear cualquier entrada de fecha a DD/MM/AAAA para visualización
+  const formatDateToES = (dateStr: string) => {
+    if (!dateStr || dateStr === "null" || dateStr === "undefined") return '--/--/----';
+    
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+    
+    return dateStr; // Si falla el parseo, devolvemos el original
+  };
 
-  // Vendedores únicos presentes en los datos
+  // Vendedores únicos
   const uniqueSellers = useMemo(() => {
     const s = Array.from(new Set(budgets.map(b => b.vendedor))).filter(Boolean);
     return s.sort();
   }, [budgets]);
 
-  // Lógica de filtrado corregida y estricta
-  const filteredBudgets = useMemo(() => {
-    return budgets.filter(b => {
-      // Normalización para comparación
-      const vendedorNameRaw = b.vendedor ? b.vendedor.trim() : '';
-      const vendedorNameUpper = vendedorNameRaw.toUpperCase();
-      const sellerInfo = SELLER_DATA[vendedorNameUpper];
-      
-      // La SECCIÓN se toma de la base de datos oficial del vendedor
-      const officialSection = sellerInfo?.section || b.seccion;
-      const sellerType = sellerInfo?.type || '';
-
-      // Filtro de búsqueda: prioriza Acto exacto o Cliente que contenga el texto
+  // Lógica de filtrado y ordenación
+  const filteredAndSortedBudgets = useMemo(() => {
+    // 1. Filtrar
+    let result = budgets.filter(b => {
       const cleanSearch = search.trim().toLowerCase();
       const matchesSearch = !cleanSearch || 
         b.id.toLowerCase().includes(cleanSearch) || 
         b.cliente.toLowerCase().includes(cleanSearch);
 
-      // Filtro de vendedor específico
-      const matchesVendedor = !filterVendedor || vendedorNameRaw === filterVendedor;
-
-      // Filtro de sección: debe coincidir con la oficial del vendedor
-      const matchesSeccion = !filterSeccion || officialSection === filterSeccion;
-      
+      const matchesVendedor = !filterVendedor || b.vendedor === filterVendedor;
       const matchesEstado = !filterEstado || b.estado === filterEstado;
-      const matchesSellerType = !filterSellerType || sellerType === filterSellerType;
-      const matchesFechaCrea = !filterFechaCrea || (b.fechaCreacion && b.fechaCreacion.includes(filterFechaCrea));
       
-      return matchesSearch && matchesVendedor && matchesSeccion && matchesEstado && matchesSellerType && matchesFechaCrea;
+      const budgetDate = b.fechaCreacion; // Ya está en YYYY-MM-DD
+      const matchesFechaInicio = !filterFechaInicio || budgetDate >= filterFechaInicio;
+      const matchesFechaFin = !filterFechaFin || budgetDate <= filterFechaFin;
+      
+      return matchesSearch && matchesVendedor && matchesEstado && 
+             matchesFechaInicio && matchesFechaFin;
     });
-  }, [budgets, search, filterVendedor, filterSeccion, filterEstado, filterSellerType, filterFechaCrea]);
 
-  // Estadísticas basadas en los presupuestos FILTRADOS
+    // 2. Ordenar
+    if (sortConfig) {
+      result.sort((a, b) => {
+        let aValue: any = a[sortConfig.key] || '';
+        let bValue: any = b[sortConfig.key] || '';
+        
+        if (sortConfig.key === 'fechaCreacion') {
+          aValue = new Date(aValue).getTime() || 0;
+          bValue = new Date(bValue).getTime() || 0;
+        } else if (typeof aValue === 'string') {
+          aValue = aValue.toLowerCase();
+          bValue = bValue.toLowerCase();
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [budgets, search, filterVendedor, filterEstado, filterFechaInicio, filterFechaFin, sortConfig]);
+
   const stats = useMemo(() => {
-    const totalAmount = filteredBudgets.reduce((acc, b) => acc + (Number(b.total) || 0), 0);
+    const totalAmount = filteredAndSortedBudgets.reduce((acc, b) => acc + (Number(b.total) || 0), 0);
     const byStatus = Object.values(BudgetStatus).map(status => {
-      const filtered = filteredBudgets.filter(b => b.estado === status);
+      const filtered = filteredAndSortedBudgets.filter(b => b.estado === status);
       const amount = filtered.reduce((acc, b) => acc + (Number(b.total) || 0), 0);
       return { 
         status, 
@@ -93,7 +132,7 @@ const App: React.FC = () => {
       };
     });
     return { totalAmount, byStatus };
-  }, [filteredBudgets]);
+  }, [filteredAndSortedBudgets]);
 
   const handleUpdate = async (id: string, status: BudgetStatus, notes: string, fechaGestion: string) => {
     await updateBudgetOnSheet(id, status, notes, fechaGestion);
@@ -102,12 +141,20 @@ const App: React.FC = () => {
     ));
   };
 
+  const requestSort = (key: keyof Budget) => {
+    let direction: 'asc' | 'desc' = 'desc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
           <div className="w-12 h-12 border-4 border-leroy-green border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-leroy-dark font-black uppercase tracking-widest text-[10px]">LEROY MERLIN - Gandía - Cargando datos...</p>
+          <p className="mt-4 text-leroy-dark font-black uppercase tracking-widest text-[10px]">LEROY MERLIN - Sincronizando datos...</p>
         </div>
       </div>
     );
@@ -129,33 +176,18 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 lg:flex items-center gap-2 flex-1 max-w-6xl">
+          <div className="grid grid-cols-2 lg:flex items-center gap-2 flex-1 max-w-7xl">
              <input 
-                type="text" placeholder="Acto o Cliente..."
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
+                type="text" placeholder="Buscar Acto o Cliente..."
+                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px]"
                 value={search} onChange={e => setSearch(e.target.value)}
              />
              <select 
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[140px]"
+                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
                 value={filterVendedor} onChange={e => setFilterVendedor(e.target.value)}
              >
                 <option value="">Vendedor (Todos)</option>
                 {uniqueSellers.map(v => <option key={v} value={v}>{v}</option>)}
-             </select>
-             <select 
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all"
-                value={filterSeccion} onChange={e => setFilterSeccion(e.target.value)}
-             >
-                <option value="">Sección (Todas)</option>
-                {sections.map(s => <option key={s} value={s}>{s}</option>)}
-             </select>
-             <select 
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all"
-                value={filterSellerType} onChange={e => setFilterSellerType(e.target.value)}
-             >
-                <option value="">VP / VE</option>
-                <option value="VP">VP</option>
-                <option value="VE">VE</option>
              </select>
              <select 
                 className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all"
@@ -164,13 +196,25 @@ const App: React.FC = () => {
                 <option value="">Estado</option>
                 {Object.values(BudgetStatus).map(s => <option key={s} value={s}>{s}</option>)}
              </select>
-             <div className="flex flex-col bg-slate-50 border border-slate-200 p-1 rounded min-w-[90px]">
-                <span className="text-[7px] font-black uppercase text-slate-500 px-1 leading-none">Creado</span>
-                <input 
-                  type="date" className="bg-transparent text-[10px] outline-none h-4"
-                  value={filterFechaCrea} onChange={e => setFilterFechaCrea(e.target.value)}
-                />
+             
+             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-1 rounded min-w-[200px]">
+                <div className="flex flex-col flex-1">
+                  <span className="text-[7px] font-black uppercase text-slate-500 px-1 leading-none">Desde</span>
+                  <input 
+                    type="date" className="bg-transparent text-[9px] outline-none h-4 font-bold"
+                    value={filterFechaInicio} onChange={e => setFilterFechaInicio(e.target.value)}
+                  />
+                </div>
+                <div className="w-px h-6 bg-slate-200"></div>
+                <div className="flex flex-col flex-1">
+                  <span className="text-[7px] font-black uppercase text-slate-500 px-1 leading-none">Hasta</span>
+                  <input 
+                    type="date" className="bg-transparent text-[9px] outline-none h-4 font-bold"
+                    value={filterFechaFin} onChange={e => setFilterFechaFin(e.target.value)}
+                  />
+                </div>
              </div>
+
              <button onClick={loadData} title="Refrescar" className="p-2 bg-leroy-green text-white rounded hover:bg-green-700 transition-all shadow-sm active:scale-95">
                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
              </button>
@@ -179,7 +223,6 @@ const App: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-8 mt-8">
-        {/* KPI Summary Row */}
         <section className="mb-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             {stats.byStatus.map((s, i) => (
@@ -192,18 +235,16 @@ const App: React.FC = () => {
               />
             ))}
             <StatCard 
-                label="TOTAL GENERAL" 
+                label="TOTAL FILTRADO" 
                 value={`${new Intl.NumberFormat('es-ES').format(stats.totalAmount)} €`} 
                 percentage={100}
                 colorClass="bg-slate-200 text-slate-600 border-slate-300"
                 textColorClass="text-slate-900"
               />
           </div>
-          {/* Gráficos reactivos al filtrado */}
-          <DashboardCharts budgets={filteredBudgets} />
+          <DashboardCharts budgets={filteredAndSortedBudgets} />
         </section>
 
-        {/* Results Table */}
         <section>
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
@@ -211,8 +252,19 @@ const App: React.FC = () => {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-500 font-black uppercase tracking-widest italic text-[9px]">
                     <th className="px-6 py-4">Ref. Acto</th>
+                    <th 
+                      className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group border-l border-slate-100"
+                      onClick={() => requestSort('fechaCreacion')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Fecha Crea.</span>
+                        <span className="text-leroy-green group-hover:scale-125 transition-transform text-[14px]">
+                          {sortConfig?.key === 'fechaCreacion' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
                     <th className="px-6 py-4">Cliente</th>
-                    <th className="px-6 py-4">Colaborador / Sección</th>
+                    <th className="px-6 py-4">Vendedor / Sección</th>
                     <th className="px-6 py-4">Notas de Gestión</th>
                     <th className="px-6 py-4">Estado</th>
                     <th className="px-6 py-4 text-right">Total</th>
@@ -220,31 +272,28 @@ const App: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredBudgets.map((b) => {
+                  {filteredAndSortedBudgets.map((b) => {
                     const sellerNameClean = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
                     const sellerInfo = SELLER_DATA[sellerNameClean];
-                    const sellerType = sellerInfo?.type || '';
                     const sellerSection = sellerInfo?.section || b.seccion;
                     
                     return (
                       <tr key={b.id} className="hover:bg-green-50/20 transition-colors">
                         <td className="px-6 py-4 font-mono font-bold text-slate-400">{b.id}</td>
-                        <td className="px-6 py-4">
-                          <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[160px]">{b.cliente}</p>
+                        <td className="px-6 py-4 border-l border-slate-50">
+                          <span className="text-[10px] text-slate-700 font-black bg-slate-100 px-3 py-1.5 rounded shadow-sm border border-slate-200 inline-block min-w-[95px] text-center">
+                            {formatDateToES(b.fechaCreacion)}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <p className="font-bold text-slate-700 uppercase leading-tight">{b.vendedor}</p>
-                            {sellerType && (
-                              <span className={`px-1.5 py-0.5 rounded-[2px] text-[7px] font-black ${sellerType === 'VP' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white'}`}>
-                                {sellerType}
-                              </span>
-                            )}
-                          </div>
+                          <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[140px]">{b.cliente}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-slate-700 uppercase leading-tight mb-1">{b.vendedor}</p>
                           <p className="text-[9px] text-leroy-green font-black uppercase tracking-tighter">{sellerSection}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-[10px] text-slate-500 font-medium italic truncate max-w-[180px]" title={b.notas}>
+                          <p className="text-[10px] text-slate-500 font-medium italic truncate max-w-[200px]" title={b.notas}>
                             {b.notas || <span className="text-slate-300 italic">Sin observaciones...</span>}
                           </p>
                         </td>
@@ -270,11 +319,6 @@ const App: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            {filteredBudgets.length === 0 && (
-              <div className="p-20 text-center text-slate-300 uppercase font-black text-[10px] tracking-[0.3em] bg-slate-50/50">
-                Sin resultados para esta búsqueda
-              </div>
-            )}
           </div>
         </section>
       </main>

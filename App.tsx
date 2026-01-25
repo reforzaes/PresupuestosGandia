@@ -20,6 +20,7 @@ const App: React.FC = () => {
   // Filtros
   const [search, setSearch] = useState('');
   const [filterVendedor, setFilterVendedor] = useState('');
+  const [filterSellerType, setFilterSellerType] = useState<string>(''); // Nuevo: VP o VE
   const [filterEstado, setFilterEstado] = useState<string>('');
   const [filterFechaInicio, setFilterFechaInicio] = useState('');
   const [filterFechaFin, setFilterFechaFin] = useState('');
@@ -27,7 +28,7 @@ const App: React.FC = () => {
   // Ordenación por defecto: Fecha más reciente primero
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'fechaCreacion', direction: 'desc' });
 
-  // Función robusa para normalizar fechas a ISO (YYYY-MM-DD) para lógica interna
+  // Normalización de fechas para lógica interna
   const normalizeDate = (val: any): string => {
     if (!val) return "";
     const d = new Date(val);
@@ -39,7 +40,6 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const data = await fetchBudgets();
-      // Normalizamos las fechas al cargar para que los filtros funcionen
       const normalizedData = (data || []).map(b => ({
         ...b,
         fechaCreacion: normalizeDate(b.fechaCreacion)
@@ -56,10 +56,9 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  // Función para formatear cualquier entrada de fecha a DD/MM/AAAA para visualización
+  // Formato DD/MM/AAAA para visualización
   const formatDateToES = (dateStr: string) => {
     if (!dateStr || dateStr === "null" || dateStr === "undefined") return '--/--/----';
-    
     const d = new Date(dateStr);
     if (!isNaN(d.getTime())) {
       const day = String(d.getDate()).padStart(2, '0');
@@ -67,11 +66,10 @@ const App: React.FC = () => {
       const year = d.getFullYear();
       return `${day}/${month}/${year}`;
     }
-    
-    return dateStr; // Si falla el parseo, devolvemos el original
+    return dateStr;
   };
 
-  // Vendedores únicos
+  // Vendedores únicos para el select
   const uniqueSellers = useMemo(() => {
     const s = Array.from(new Set(budgets.map(b => b.vendedor))).filter(Boolean);
     return s.sort();
@@ -79,25 +77,28 @@ const App: React.FC = () => {
 
   // Lógica de filtrado y ordenación
   const filteredAndSortedBudgets = useMemo(() => {
-    // 1. Filtrar
     let result = budgets.filter(b => {
+      const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
+      const sellerInfo = SELLER_DATA[sellerNameUpper];
+      const sellerType = sellerInfo?.type || '';
+
       const cleanSearch = search.trim().toLowerCase();
       const matchesSearch = !cleanSearch || 
         b.id.toLowerCase().includes(cleanSearch) || 
         b.cliente.toLowerCase().includes(cleanSearch);
 
       const matchesVendedor = !filterVendedor || b.vendedor === filterVendedor;
+      const matchesSellerType = !filterSellerType || sellerType === filterSellerType;
       const matchesEstado = !filterEstado || b.estado === filterEstado;
       
-      const budgetDate = b.fechaCreacion; // Ya está en YYYY-MM-DD
+      const budgetDate = b.fechaCreacion;
       const matchesFechaInicio = !filterFechaInicio || budgetDate >= filterFechaInicio;
       const matchesFechaFin = !filterFechaFin || budgetDate <= filterFechaFin;
       
-      return matchesSearch && matchesVendedor && matchesEstado && 
+      return matchesSearch && matchesVendedor && matchesSellerType && matchesEstado && 
              matchesFechaInicio && matchesFechaFin;
     });
 
-    // 2. Ordenar
     if (sortConfig) {
       result.sort((a, b) => {
         let aValue: any = a[sortConfig.key] || '';
@@ -118,7 +119,7 @@ const App: React.FC = () => {
     }
 
     return result;
-  }, [budgets, search, filterVendedor, filterEstado, filterFechaInicio, filterFechaFin, sortConfig]);
+  }, [budgets, search, filterVendedor, filterSellerType, filterEstado, filterFechaInicio, filterFechaFin, sortConfig]);
 
   const stats = useMemo(() => {
     const totalAmount = filteredAndSortedBudgets.reduce((acc, b) => acc + (Number(b.total) || 0), 0);
@@ -178,15 +179,23 @@ const App: React.FC = () => {
           
           <div className="grid grid-cols-2 lg:flex items-center gap-2 flex-1 max-w-7xl">
              <input 
-                type="text" placeholder="Buscar Acto o Cliente..."
+                type="text" placeholder="Acto o Cliente..."
                 className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px]"
                 value={search} onChange={e => setSearch(e.target.value)}
              />
              <select 
+                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px]"
+                value={filterSellerType} onChange={e => setFilterSellerType(e.target.value)}
+             >
+                <option value="">Tipo (VE/VP)</option>
+                <option value="VP">Vendedores Proyecto (VP)</option>
+                <option value="VE">Vendedores Especialistas (VE)</option>
+             </select>
+             <select 
                 className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
                 value={filterVendedor} onChange={e => setFilterVendedor(e.target.value)}
              >
-                <option value="">Vendedor (Todos)</option>
+                <option value="">Vendedor</option>
                 {uniqueSellers.map(v => <option key={v} value={v}>{v}</option>)}
              </select>
              <select 
@@ -197,9 +206,9 @@ const App: React.FC = () => {
                 {Object.values(BudgetStatus).map(s => <option key={s} value={s}>{s}</option>)}
              </select>
              
-             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-1 rounded min-w-[200px]">
+             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-1 rounded min-w-[180px]">
                 <div className="flex flex-col flex-1">
-                  <span className="text-[7px] font-black uppercase text-slate-500 px-1 leading-none">Desde</span>
+                  <span className="text-[7px] font-black uppercase text-slate-500 px-1 leading-none">Creado Desde</span>
                   <input 
                     type="date" className="bg-transparent text-[9px] outline-none h-4 font-bold"
                     value={filterFechaInicio} onChange={e => setFilterFechaInicio(e.target.value)}
@@ -275,6 +284,7 @@ const App: React.FC = () => {
                   {filteredAndSortedBudgets.map((b) => {
                     const sellerNameClean = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
                     const sellerInfo = SELLER_DATA[sellerNameClean];
+                    const sellerType = sellerInfo?.type || '';
                     const sellerSection = sellerInfo?.section || b.seccion;
                     
                     return (
@@ -289,7 +299,14 @@ const App: React.FC = () => {
                           <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[140px]">{b.cliente}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="font-bold text-slate-700 uppercase leading-tight mb-1">{b.vendedor}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-bold text-slate-700 uppercase leading-tight">{b.vendedor}</p>
+                            {sellerType && (
+                              <span className={`px-1.5 py-0.5 rounded-[2px] text-[7px] font-black ${sellerType === 'VP' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white'}`}>
+                                {sellerType}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[9px] text-leroy-green font-black uppercase tracking-tighter">{sellerSection}</p>
                         </td>
                         <td className="px-6 py-4">

@@ -30,7 +30,7 @@ const DashboardCharts: React.FC<Props> = ({ budgets }) => {
   budgets.forEach(b => {
     const sellerName = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
     const info = SELLER_DATA[sellerName];
-    const sectionName = info?.section || b.seccion || "Otras";
+    const sectionName = info?.section || "Sin sección";
     
     if (!sectionCounts[sectionName]) {
       sectionCounts[sectionName] = { name: sectionName, totalSection: 0 };
@@ -47,7 +47,7 @@ const DashboardCharts: React.FC<Props> = ({ budgets }) => {
       pcts[`${s}_pct`] = section.totalSection > 0 ? (section[s] / section.totalSection * 100) : 0;
     });
     return { ...section, ...pcts };
-  });
+  }).sort((a, b) => b.totalSection - a.totalSection);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);

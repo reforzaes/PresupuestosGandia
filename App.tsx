@@ -20,7 +20,8 @@ const App: React.FC = () => {
   // Filtros
   const [search, setSearch] = useState('');
   const [filterVendedor, setFilterVendedor] = useState('');
-  const [filterSellerType, setFilterSellerType] = useState<string>(''); // Nuevo: VP o VE
+  const [filterSellerType, setFilterSellerType] = useState<string>(''); 
+  const [filterSeccion, setFilterSeccion] = useState(''); // Restaurado: Filtro de sección
   const [filterEstado, setFilterEstado] = useState<string>('');
   const [filterFechaInicio, setFilterFechaInicio] = useState('');
   const [filterFechaFin, setFilterFechaFin] = useState('');
@@ -69,6 +70,15 @@ const App: React.FC = () => {
     return dateStr;
   };
 
+  // Secciones únicas para el select (basado en SELLER_DATA y budgets)
+  const uniqueSections = useMemo(() => {
+    const sectionsFromData = budgets.map(b => {
+      const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
+      return SELLER_DATA[sellerNameUpper]?.section || "Sin sección";
+    });
+    return Array.from(new Set(sectionsFromData)).sort();
+  }, [budgets]);
+
   // Vendedores únicos para el select
   const uniqueSellers = useMemo(() => {
     const s = Array.from(new Set(budgets.map(b => b.vendedor))).filter(Boolean);
@@ -81,6 +91,7 @@ const App: React.FC = () => {
       const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
       const sellerInfo = SELLER_DATA[sellerNameUpper];
       const sellerType = sellerInfo?.type || '';
+      const sellerSection = sellerInfo?.section || "Sin sección";
 
       const cleanSearch = search.trim().toLowerCase();
       const matchesSearch = !cleanSearch || 
@@ -89,13 +100,14 @@ const App: React.FC = () => {
 
       const matchesVendedor = !filterVendedor || b.vendedor === filterVendedor;
       const matchesSellerType = !filterSellerType || sellerType === filterSellerType;
+      const matchesSeccion = !filterSeccion || sellerSection === filterSeccion;
       const matchesEstado = !filterEstado || b.estado === filterEstado;
       
       const budgetDate = b.fechaCreacion;
       const matchesFechaInicio = !filterFechaInicio || budgetDate >= filterFechaInicio;
       const matchesFechaFin = !filterFechaFin || budgetDate <= filterFechaFin;
       
-      return matchesSearch && matchesVendedor && matchesSellerType && matchesEstado && 
+      return matchesSearch && matchesVendedor && matchesSellerType && matchesSeccion && matchesEstado && 
              matchesFechaInicio && matchesFechaFin;
     });
 
@@ -119,7 +131,7 @@ const App: React.FC = () => {
     }
 
     return result;
-  }, [budgets, search, filterVendedor, filterSellerType, filterEstado, filterFechaInicio, filterFechaFin, sortConfig]);
+  }, [budgets, search, filterVendedor, filterSellerType, filterSeccion, filterEstado, filterFechaInicio, filterFechaFin, sortConfig]);
 
   const stats = useMemo(() => {
     const totalAmount = filteredAndSortedBudgets.reduce((acc, b) => acc + (Number(b.total) || 0), 0);
@@ -180,35 +192,42 @@ const App: React.FC = () => {
           <div className="grid grid-cols-2 lg:flex items-center gap-2 flex-1 max-w-7xl">
              <input 
                 type="text" placeholder="Acto o Cliente..."
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px]"
+                className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px]"
                 value={search} onChange={e => setSearch(e.target.value)}
              />
              <select 
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px]"
+                className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[80px]"
                 value={filterSellerType} onChange={e => setFilterSellerType(e.target.value)}
              >
-                <option value="">Tipo (VE/VP)</option>
-                <option value="VP">Vendedores Proyecto (VP)</option>
-                <option value="VE">Vendedores Especialistas (VE)</option>
+                <option value="">Tipo</option>
+                <option value="VP">VP</option>
+                <option value="VE">VE</option>
              </select>
              <select 
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
+                className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
+                value={filterSeccion} onChange={e => setFilterSeccion(e.target.value)}
+             >
+                <option value="">Sección (Todas)</option>
+                {uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}
+             </select>
+             <select 
+                className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px]"
                 value={filterVendedor} onChange={e => setFilterVendedor(e.target.value)}
              >
                 <option value="">Vendedor</option>
                 {uniqueSellers.map(v => <option key={v} value={v}>{v}</option>)}
              </select>
              <select 
-                className="px-3 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all"
+                className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all"
                 value={filterEstado} onChange={e => setFilterEstado(e.target.value)}
              >
                 <option value="">Estado</option>
                 {Object.values(BudgetStatus).map(s => <option key={s} value={s}>{s}</option>)}
              </select>
              
-             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-1 rounded min-w-[180px]">
+             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-1 rounded min-w-[170px]">
                 <div className="flex flex-col flex-1">
-                  <span className="text-[7px] font-black uppercase text-slate-500 px-1 leading-none">Creado Desde</span>
+                  <span className="text-[7px] font-black uppercase text-slate-500 px-1 leading-none">Desde</span>
                   <input 
                     type="date" className="bg-transparent text-[9px] outline-none h-4 font-bold"
                     value={filterFechaInicio} onChange={e => setFilterFechaInicio(e.target.value)}
@@ -285,7 +304,7 @@ const App: React.FC = () => {
                     const sellerNameClean = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
                     const sellerInfo = SELLER_DATA[sellerNameClean];
                     const sellerType = sellerInfo?.type || '';
-                    const sellerSection = sellerInfo?.section || b.seccion;
+                    const sellerSection = sellerInfo?.section || "Sin sección";
                     
                     return (
                       <tr key={b.id} className="hover:bg-green-50/20 transition-colors">

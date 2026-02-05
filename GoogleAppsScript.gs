@@ -1,6 +1,6 @@
 
 /**
- * LEROY MERLIN - SCRIPT DE SINCRONIZACIÓN v3.7
+ * LEROY MERLIN - SCRIPT DE SINCRONIZACIÓN v3.8
  */
 
 const SHEET_NAME = "Presupuestos";
@@ -16,7 +16,8 @@ function doGet(e) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return createJsonResponse([]); // Solo cabeceras
 
-  const rows = data.slice(1);
+  // Filtramos para ignorar filas donde la columna A (Acto) esté vacía
+  const rows = data.slice(1).filter(row => row[0] && String(row[0]).trim() !== "");
   
   const result = rows.map(row => {
     // Columna M es el índice 12. Verificamos si contiene la palabra "PRO"

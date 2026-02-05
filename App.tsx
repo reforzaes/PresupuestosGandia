@@ -21,7 +21,7 @@ const App: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filterVendedor, setFilterVendedor] = useState('');
   const [filterSellerType, setFilterSellerType] = useState<string>(''); 
-  const [filterSeccion, setFilterSeccion] = useState(''); // Restaurado: Filtro de sección
+  const [filterSeccion, setFilterSeccion] = useState(''); 
   const [filterEstado, setFilterEstado] = useState<string>('');
   const [filterFechaInicio, setFilterFechaInicio] = useState('');
   const [filterFechaFin, setFilterFechaFin] = useState('');
@@ -41,10 +41,12 @@ const App: React.FC = () => {
     setLoading(true);
     try {
       const data = await fetchBudgets();
-      const normalizedData = (data || []).map(b => ({
-        ...b,
-        fechaCreacion: normalizeDate(b.fechaCreacion)
-      }));
+      const normalizedData = (data || [])
+        .filter((b: any) => b.id && String(b.id).trim() !== "")
+        .map(b => ({
+          ...b,
+          fechaCreacion: normalizeDate(b.fechaCreacion)
+        }));
       setBudgets(normalizedData);
     } catch (err) {
       console.error("Error al cargar presupuestos:", err);
@@ -57,22 +59,14 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  // Formato DD/MM/AAAA para visualización con máxima robustez
   const formatDateToES = (dateInput: any) => {
     if (!dateInput || dateInput === "null" || dateInput === "undefined") return '--/--/----';
-    
     const input = String(dateInput).trim();
-
-    // 1. Si ya tiene el formato DD/MM/AAAA
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(input)) return input;
-
-    // 2. Si es formato YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}/.test(input)) {
       const parts = input.split('T')[0].split('-');
       return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
-
-    // 3. Intento de parseo por Date (para casos como el string largo de la imagen)
     const d = new Date(dateInput);
     if (!isNaN(d.getTime())) {
       const day = String(d.getDate()).padStart(2, '0');
@@ -80,12 +74,9 @@ const App: React.FC = () => {
       const year = d.getFullYear();
       return `${day}/${month}/${year}`;
     }
-
-    // 4. Limpieza básica de emergencia (tomar solo la primera parte si hay espacios)
     return input.split(' ')[0];
   };
 
-  // Secciones únicas para el select (basado en SELLER_DATA y budgets)
   const uniqueSections = useMemo(() => {
     const sectionsFromData = budgets.map(b => {
       const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
@@ -94,13 +85,11 @@ const App: React.FC = () => {
     return Array.from(new Set(sectionsFromData)).sort();
   }, [budgets]);
 
-  // Vendedores únicos para el select
   const uniqueSellers = useMemo(() => {
     const s = Array.from(new Set(budgets.map(b => b.vendedor))).filter(Boolean);
     return s.sort();
   }, [budgets]);
 
-  // Lógica de filtrado y ordenación
   const filteredAndSortedBudgets = useMemo(() => {
     let result = budgets.filter(b => {
       const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
@@ -115,7 +104,6 @@ const App: React.FC = () => {
 
       const matchesVendedor = !filterVendedor || b.vendedor === filterVendedor;
       
-      // Lógica de filtro especial: si se elige PRO, se filtra por b.isPro
       let matchesSellerType = true;
       if (filterSellerType === 'PRO') {
         matchesSellerType = !!b.isPro;
@@ -138,7 +126,6 @@ const App: React.FC = () => {
       result.sort((a, b) => {
         let aValue: any = a[sortConfig.key] || '';
         let bValue: any = b[sortConfig.key] || '';
-        
         if (sortConfig.key === 'fechaCreacion') {
           aValue = new Date(aValue).getTime() || 0;
           bValue = new Date(bValue).getTime() || 0;
@@ -146,13 +133,11 @@ const App: React.FC = () => {
           aValue = aValue.toLowerCase();
           bValue = bValue.toLowerCase();
         }
-
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
-
     return result;
   }, [budgets, search, filterVendedor, filterSellerType, filterSeccion, filterEstado, filterFechaInicio, filterFechaFin, sortConfig]);
 
@@ -190,7 +175,7 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
           <div className="w-12 h-12 border-4 border-leroy-green border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-leroy-dark font-black uppercase tracking-widest text-[10px]">LEROY MERLIN - Sincronizando datos...</p>
+          <p className="mt-4 text-leroy-dark font-black uppercase tracking-widest text-[10px]">Sincronizando datos...</p>
         </div>
       </div>
     );
@@ -198,8 +183,8 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-20 bg-slate-50 text-slate-900 font-sans">
-      <header className="bg-white border-b-4 border-leroy-green sticky top-0 z-30 px-4 md:px-8 py-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <header className="bg-white border-b-4 border-leroy-green sticky top-0 z-30 px-4 md:px-6 py-4 shadow-sm">
+        <div className="max-w-full mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-3 shrink-0">
             <div className="w-12 h-10 bg-leroy-green flex items-center justify-center shadow-inner">
                <svg viewBox="0 0 24 24" className="w-8 h-8 text-white fill-current"><path d="M12 3L2 12h3v8h14v-8h3L12 3z"/></svg>
@@ -212,10 +197,10 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 lg:flex items-center gap-2 flex-1 max-w-7xl">
+          <div className="grid grid-cols-2 lg:flex items-center gap-2 flex-1 max-w-full">
              <input 
                 type="text" placeholder="Acto o Cliente..."
-                className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px]"
+                className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[100px] flex-1"
                 value={search} onChange={e => setSearch(e.target.value)}
              />
              <select 
@@ -274,7 +259,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 mt-8">
+      <main className="max-w-full mx-auto px-4 md:px-6 mt-8">
         <section className="mb-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             {stats.byStatus.map((s, i) => (
@@ -303,9 +288,9 @@ const App: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr className="text-slate-500 font-black uppercase tracking-widest italic text-[9px]">
-                    <th className="px-6 py-4">Ref. Acto</th>
+                    <th className="px-3 py-4">Ref. Acto</th>
                     <th 
-                      className="px-6 py-4 cursor-pointer hover:bg-slate-100 transition-colors group border-l border-slate-100"
+                      className="px-3 py-4 cursor-pointer hover:bg-slate-100 transition-colors group border-l border-slate-100"
                       onClick={() => requestSort('fechaCreacion')}
                     >
                       <div className="flex items-center gap-2">
@@ -315,12 +300,12 @@ const App: React.FC = () => {
                         </span>
                       </div>
                     </th>
-                    <th className="px-6 py-4">Cliente</th>
-                    <th className="px-6 py-4">Vendedor / Sección</th>
-                    <th className="px-6 py-4">Notas de Gestión</th>
-                    <th className="px-6 py-4">Estado</th>
-                    <th className="px-6 py-4 text-right">Total</th>
-                    <th className="px-6 py-4">Acción</th>
+                    <th className="px-3 py-4">Cliente</th>
+                    <th className="px-3 py-4">Vendedor / Sección</th>
+                    <th className="px-3 py-4">Notas de Gestión</th>
+                    <th className="px-3 py-4">Estado</th>
+                    <th className="px-3 py-4 text-right">Total</th>
+                    <th className="px-3 py-4">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -332,48 +317,48 @@ const App: React.FC = () => {
                     
                     return (
                       <tr key={b.id} className="hover:bg-green-50/20 transition-colors">
-                        <td className="px-6 py-4 font-mono font-bold text-slate-400">{b.id}</td>
-                        <td className="px-6 py-4 border-l border-slate-50">
+                        <td className="px-3 py-4 font-mono font-bold text-slate-400">{b.id}</td>
+                        <td className="px-3 py-4 border-l border-slate-50">
                           <span className="text-[10px] text-slate-700 font-black bg-slate-100 px-3 py-1.5 rounded shadow-sm border border-slate-200 inline-block min-w-[95px] text-center whitespace-nowrap">
                             {formatDateToES(b.fechaCreacion)}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-4">
                           <div className="flex items-center gap-2">
-                            <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[140px]">{b.cliente}</p>
+                            <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[120px]" title={b.cliente}>{b.cliente}</p>
                             {b.isPro && (
-                              <span className="bg-slate-800 text-white text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter shadow-sm">PRO</span>
+                              <span className="bg-slate-800 text-white text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter shadow-sm flex-shrink-0">PRO</span>
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-4">
                           <div className="flex items-center gap-2 mb-1">
-                            <p className="font-bold text-slate-700 uppercase leading-tight">{b.vendedor}</p>
+                            <p className="font-bold text-slate-700 uppercase leading-tight truncate max-w-[100px]" title={b.vendedor}>{b.vendedor}</p>
                             {sellerType && (
-                              <span className={`px-1.5 py-0.5 rounded-[2px] text-[7px] font-black ${sellerType === 'VP' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white'}`}>
+                              <span className={`px-1.5 py-0.5 rounded-[2px] text-[7px] font-black flex-shrink-0 ${sellerType === 'VP' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white'}`}>
                                 {sellerType}
                               </span>
                             )}
                           </div>
-                          <p className="text-[9px] text-leroy-green font-black uppercase tracking-tighter">{sellerSection}</p>
+                          <p className="text-[9px] text-leroy-green font-black uppercase tracking-tighter truncate max-w-[120px]">{sellerSection}</p>
                         </td>
-                        <td className="px-6 py-4">
-                          <p className="text-[10px] text-slate-500 font-medium italic truncate max-w-[200px]" title={b.notas}>
+                        <td className="px-3 py-4">
+                          <p className="text-[10px] text-slate-500 font-medium italic truncate max-w-[140px]" title={b.notas}>
                             {b.notas || <span className="text-slate-300 italic">Sin observaciones...</span>}
                           </p>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-[2px] text-[9px] font-black uppercase border ${STATUS_BG_COLORS[b.estado]}`}>
+                        <td className="px-3 py-4">
+                          <span className={`px-2 py-0.5 rounded-[2px] text-[9px] font-black uppercase border whitespace-nowrap ${STATUS_BG_COLORS[b.estado]}`}>
                             {b.estado}
                           </span>
                         </td>
-                        <td className={`px-6 py-4 font-black text-right text-[13px] ${b.total < 600 ? 'text-red-600' : 'text-leroy-dark italic'}`}>
+                        <td className={`px-3 py-4 font-black text-right text-[13px] whitespace-nowrap ${b.total < 600 ? 'text-red-600' : 'text-leroy-dark italic'}`}>
                           {new Intl.NumberFormat('es-ES').format(b.total)} €
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 py-4 text-right">
                           <button 
                             onClick={() => setSelectedBudget(b)}
-                            className="px-4 py-2 bg-leroy-green text-white rounded text-[10px] font-black uppercase shadow-sm hover:bg-green-700 transition-all active:scale-95"
+                            className="px-4 py-2 bg-leroy-green text-white rounded text-[10px] font-black uppercase shadow-sm hover:bg-green-700 transition-all active:scale-95 whitespace-nowrap"
                           >
                             Gestionar
                           </button>

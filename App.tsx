@@ -33,7 +33,7 @@ const App: React.FC = () => {
   const normalizeDate = (val: any): string => {
     if (!val) return "";
     const d = new Date(val);
-    if (isNaN(d.getTime())) return String(val);
+    if (isNaN(d.getTime())) return String(val).split(' ')[0];
     return d.toISOString().split('T')[0];
   };
 
@@ -57,17 +57,32 @@ const App: React.FC = () => {
     loadData();
   }, []);
 
-  // Formato DD/MM/AAAA para visualización
-  const formatDateToES = (dateStr: string) => {
-    if (!dateStr || dateStr === "null" || dateStr === "undefined") return '--/--/----';
-    const d = new Date(dateStr);
+  // Formato DD/MM/AAAA para visualización con máxima robustez
+  const formatDateToES = (dateInput: any) => {
+    if (!dateInput || dateInput === "null" || dateInput === "undefined") return '--/--/----';
+    
+    const input = String(dateInput).trim();
+
+    // 1. Si ya tiene el formato DD/MM/AAAA
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(input)) return input;
+
+    // 2. Si es formato YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(input)) {
+      const parts = input.split('T')[0].split('-');
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    // 3. Intento de parseo por Date (para casos como el string largo de la imagen)
+    const d = new Date(dateInput);
     if (!isNaN(d.getTime())) {
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
       return `${day}/${month}/${year}`;
     }
-    return dateStr;
+
+    // 4. Limpieza básica de emergencia (tomar solo la primera parte si hay espacios)
+    return input.split(' ')[0];
   };
 
   // Secciones únicas para el select (basado en SELLER_DATA y budgets)
@@ -99,7 +114,15 @@ const App: React.FC = () => {
         b.cliente.toLowerCase().includes(cleanSearch);
 
       const matchesVendedor = !filterVendedor || b.vendedor === filterVendedor;
-      const matchesSellerType = !filterSellerType || sellerType === filterSellerType;
+      
+      // Lógica de filtro especial: si se elige PRO, se filtra por b.isPro
+      let matchesSellerType = true;
+      if (filterSellerType === 'PRO') {
+        matchesSellerType = !!b.isPro;
+      } else if (filterSellerType) {
+        matchesSellerType = sellerType === filterSellerType;
+      }
+
       const matchesSeccion = !filterSeccion || sellerSection === filterSeccion;
       const matchesEstado = !filterEstado || b.estado === filterEstado;
       
@@ -202,6 +225,7 @@ const App: React.FC = () => {
                 <option value="">Tipo</option>
                 <option value="VP">VP</option>
                 <option value="VE">VE</option>
+                <option value="PRO">PRO</option>
              </select>
              <select 
                 className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
@@ -310,12 +334,17 @@ const App: React.FC = () => {
                       <tr key={b.id} className="hover:bg-green-50/20 transition-colors">
                         <td className="px-6 py-4 font-mono font-bold text-slate-400">{b.id}</td>
                         <td className="px-6 py-4 border-l border-slate-50">
-                          <span className="text-[10px] text-slate-700 font-black bg-slate-100 px-3 py-1.5 rounded shadow-sm border border-slate-200 inline-block min-w-[95px] text-center">
+                          <span className="text-[10px] text-slate-700 font-black bg-slate-100 px-3 py-1.5 rounded shadow-sm border border-slate-200 inline-block min-w-[95px] text-center whitespace-nowrap">
                             {formatDateToES(b.fechaCreacion)}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[140px]">{b.cliente}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[140px]">{b.cliente}</p>
+                            {b.isPro && (
+                              <span className="bg-slate-800 text-white text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter shadow-sm">PRO</span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2 mb-1">

@@ -1,6 +1,6 @@
 
 /**
- * LEROY MERLIN - SCRIPT DE SINCRONIZACIÓN v3.1
+ * LEROY MERLIN - SCRIPT DE SINCRONIZACIÓN v3.7
  */
 
 const SHEET_NAME = "Presupuestos";
@@ -19,6 +19,10 @@ function doGet(e) {
   const rows = data.slice(1);
   
   const result = rows.map(row => {
+    // Columna M es el índice 12. Verificamos si contiene la palabra "PRO"
+    const proValue = String(row[12] || "").toUpperCase();
+    const isPro = proValue.includes("PRO") || proValue === "SÍ" || proValue === "SI" || proValue === "X";
+
     return {
       id: String(row[0] || ""),           // A: Acto
       multiActo: String(row[1] || ""),    // B: MultiActo
@@ -31,7 +35,8 @@ function doGet(e) {
       estado: String(row[8] || "En curso"), // I: Estado
       fechaGestion: formatDate(row[9]),   // J: Fecha Gestión
       total: parseFloat(row[10]) || 0,    // K: Total
-      notas: String(row[11] || "")        // L: Notas
+      notas: String(row[11] || ""),       // L: Notas
+      isPro: isPro                        // M: PRO
     };
   });
   
@@ -74,22 +79,40 @@ function doPost(e) {
  */
 function formatDate(val) {
   if (!val) return "";
+  
+  // Si es un objeto Date de Google Sheets
   if (val instanceof Date) {
-    // Forzamos formato ISO para facilitar ordenación en el cliente
-    return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    try {
+      return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    } catch (e) {
+      return val.toISOString().split('T')[0];
+    }
   }
-  // Si es un string con formato europeo o similar, intentamos normalizar
-  let sVal = String(val);
+
+  let sVal = String(val).trim();
+  
+  // Si ya viene como string largo de sistema (GMT...)
+  if (sVal.length > 15 && (sVal.includes('GMT') || sVal.includes('UTC'))) {
+    const d = new Date(sVal);
+    if (!isNaN(d.getTime())) {
+      return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    }
+  }
+
+  // Si es un formato común de string DD/MM/YYYY
   if (sVal.includes('/')) {
     let parts = sVal.split('/');
     if (parts.length === 3) {
-      // Si viene como DD/MM/YYYY, lo pasamos a YYYY-MM-DD
       if (parts[2].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      if (parts[0].length === 4) return `${parts[0]}-${parts[1]}-${parts[2]}`;
     }
   }
+  
+  // Si es un ISO string con tiempo T00:00:00
   if (sVal.includes('T')) {
     return sVal.split('T')[0];
   }
+
   return sVal;
 }
 

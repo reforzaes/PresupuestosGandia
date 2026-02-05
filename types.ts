@@ -19,4 +19,5 @@ export interface Budget {
   fechaGestion: string; // Nueva columna J
   total: number; // Columna K
   notas: string; // Columna L
+  isPro?: boolean; // Columna M
 }

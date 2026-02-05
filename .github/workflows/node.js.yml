@@ -38,14 +38,3 @@ jobs:
           # Ajustes para evitar el Timeout:
           protocol: ftp
           port: 21
-Footer
-© 2026 GitHub, Inc.
-Footer navigation
-Terms
-Privacy
-Security
-Status
-Community
-Docs
-Contact
-Manage cookies

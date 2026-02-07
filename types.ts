@@ -11,13 +11,13 @@ export interface Budget {
   multiActo: string;
   cliente: string;
   vendedor: string;
-  seccion: string; // Nueva columna E
+  seccion: string; // Columna E
   fechaCreacion: string; // Columna F
   dispoEl: string;
   tipo: string;
   estado: BudgetStatus; // Columna I
-  fechaGestion: string; // Nueva columna J
+  fechaGestion: string; // Columna J
   total: number; // Columna K
   notas: string; // Columna L
-  isPro?: boolean; // Columna M
+  proStatus?: string; // Columna M: Captura "PRO" o "PRO Cartera"
 }

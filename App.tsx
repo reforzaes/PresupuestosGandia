@@ -82,7 +82,9 @@ const App: React.FC = () => {
       const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
       return SELLER_DATA[sellerNameUpper]?.section || "Sin sección";
     });
-    return Array.from(new Set(sectionsFromData)).sort();
+    const unique = Array.from(new Set(sectionsFromData)).filter(s => s !== "Sin sección").sort();
+    // Añadimos la sección especial "PRO" que agrupa ambos estados de la columna M
+    return ["PRO", ...unique];
   }, [budgets]);
 
   const uniqueSellers = useMemo(() => {
@@ -97,6 +99,11 @@ const App: React.FC = () => {
       const sellerType = sellerInfo?.type || '';
       const sellerSection = sellerInfo?.section || "Sin sección";
 
+      // Normalización robusta para detectar estados PRO en columna M
+      const rawProVal = (b.proStatus || "").trim().toUpperCase();
+      const isProPure = rawProVal === 'PRO';
+      const isProCartera = rawProVal.includes('CARTERA') || rawProVal === 'PRO CART';
+
       const cleanSearch = search.trim().toLowerCase();
       const matchesSearch = !cleanSearch || 
         b.id.toLowerCase().includes(cleanSearch) || 
@@ -104,14 +111,25 @@ const App: React.FC = () => {
 
       const matchesVendedor = !filterVendedor || b.vendedor === filterVendedor;
       
+      // Lógica de Filtro TIPO (VP, VE, PRO, PRO Cartera)
       let matchesSellerType = true;
       if (filterSellerType === 'PRO') {
-        matchesSellerType = !!b.isPro;
+        matchesSellerType = isProPure;
+      } else if (filterSellerType === 'PRO Cartera') {
+        matchesSellerType = isProCartera;
       } else if (filterSellerType) {
         matchesSellerType = sellerType === filterSellerType;
       }
 
-      const matchesSeccion = !filterSeccion || sellerSection === filterSeccion;
+      // Lógica de Filtro SECCIÓN
+      let matchesSeccion = true;
+      if (filterSeccion === 'PRO') {
+        // En sección "PRO" mostramos cualquier variante de PRO
+        matchesSeccion = isProPure || isProCartera;
+      } else if (filterSeccion) {
+        matchesSeccion = sellerSection === filterSeccion;
+      }
+
       const matchesEstado = !filterEstado || b.estado === filterEstado;
       
       const budgetDate = b.fechaCreacion;
@@ -211,6 +229,7 @@ const App: React.FC = () => {
                 <option value="VP">VP</option>
                 <option value="VE">VE</option>
                 <option value="PRO">PRO</option>
+                <option value="PRO Cartera">PRO Cartera</option>
              </select>
              <select 
                 className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
@@ -314,6 +333,11 @@ const App: React.FC = () => {
                     const sellerInfo = SELLER_DATA[sellerNameClean];
                     const sellerType = sellerInfo?.type || '';
                     const sellerSection = sellerInfo?.section || "Sin sección";
+
+                    // Detección de PRO en fila
+                    const rawVal = (b.proStatus || "").trim().toUpperCase();
+                    const isPro = rawVal === 'PRO';
+                    const isProCart = rawVal.includes('CARTERA') || rawVal === 'PRO CART';
                     
                     return (
                       <tr key={b.id} className="hover:bg-green-50/20 transition-colors">
@@ -325,9 +349,12 @@ const App: React.FC = () => {
                         </td>
                         <td className="px-3 py-4">
                           <div className="flex items-center gap-2">
-                            <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[120px]" title={b.cliente}>{b.cliente}</p>
-                            {b.isPro && (
-                              <span className="bg-slate-800 text-white text-[8px] px-1.5 py-0.5 rounded font-black tracking-tighter shadow-sm flex-shrink-0">PRO</span>
+                            <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[150px]" title={b.cliente}>{b.cliente}</p>
+                            {isPro && (
+                              <span className="bg-[#1f2937] text-white text-[9px] px-2 py-0.5 rounded font-black tracking-tight shadow-sm flex-shrink-0">PRO</span>
+                            )}
+                            {isProCart && (
+                              <span className="bg-[#1f2937] text-amber-400 border border-amber-400/30 text-[9px] px-2 py-0.5 rounded font-black tracking-tight shadow-sm flex-shrink-0 uppercase">PRO CART</span>
                             )}
                           </div>
                         </td>

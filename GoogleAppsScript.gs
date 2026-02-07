@@ -1,6 +1,6 @@
 
 /**
- * LEROY MERLIN - SCRIPT DE SINCRONIZACIÓN v3.8
+ * LEROY MERLIN - SCRIPT DE SINCRONIZACIÓN v3.9
  */
 
 const SHEET_NAME = "Presupuestos";
@@ -20,9 +20,8 @@ function doGet(e) {
   const rows = data.slice(1).filter(row => row[0] && String(row[0]).trim() !== "");
   
   const result = rows.map(row => {
-    // Columna M es el índice 12. Verificamos si contiene la palabra "PRO"
-    const proValue = String(row[12] || "").toUpperCase();
-    const isPro = proValue.includes("PRO") || proValue === "SÍ" || proValue === "SI" || proValue === "X";
+    // Columna M es el índice 12. Capturamos el valor tal cual
+    const proStatus = String(row[12] || "").trim();
 
     return {
       id: String(row[0] || ""),           // A: Acto
@@ -37,7 +36,7 @@ function doGet(e) {
       fechaGestion: formatDate(row[9]),   // J: Fecha Gestión
       total: parseFloat(row[10]) || 0,    // K: Total
       notas: String(row[11] || ""),       // L: Notas
-      isPro: isPro                        // M: PRO
+      proStatus: proStatus                // M: PRO o PRO Cartera
     };
   });
   
@@ -75,13 +74,8 @@ function doPost(e) {
   }
 }
 
-/**
- * Formatea valores de fecha para que sean consistentes (YYYY-MM-DD)
- */
 function formatDate(val) {
   if (!val) return "";
-  
-  // Si es un objeto Date de Google Sheets
   if (val instanceof Date) {
     try {
       return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
@@ -89,18 +83,13 @@ function formatDate(val) {
       return val.toISOString().split('T')[0];
     }
   }
-
   let sVal = String(val).trim();
-  
-  // Si ya viene como string largo de sistema (GMT...)
   if (sVal.length > 15 && (sVal.includes('GMT') || sVal.includes('UTC'))) {
     const d = new Date(sVal);
     if (!isNaN(d.getTime())) {
       return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
     }
   }
-
-  // Si es un formato común de string DD/MM/YYYY
   if (sVal.includes('/')) {
     let parts = sVal.split('/');
     if (parts.length === 3) {
@@ -108,12 +97,7 @@ function formatDate(val) {
       if (parts[0].length === 4) return `${parts[0]}-${parts[1]}-${parts[2]}`;
     }
   }
-  
-  // Si es un ISO string con tiempo T00:00:00
-  if (sVal.includes('T')) {
-    return sVal.split('T')[0];
-  }
-
+  if (sVal.includes('T')) return sVal.split('T')[0];
   return sVal;
 }
 

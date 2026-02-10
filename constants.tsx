@@ -53,6 +53,7 @@ export const SELLER_DATA: Record<string, { type: 'VP' | 'VE', section: string }>
 };
 
 export const MOCK_DATA: Budget[] = [
-  { id: '513497', multiActo: '', cliente: 'EJEMPLO CARPINTERIA', vendedor: 'TODOLI MIGUEL', seccion: 'Carpintería y Madera', fechaCreacion: '2025-01-12', dispoEl: '', tipo: 'Presupuesto', estado: BudgetStatus.EN_CURSO, fechaGestion: '', total: 850.00, notas: '' },
-  { id: '513544', multiActo: '', cliente: 'EJEMPLO COCINAS', vendedor: 'CEREZO MAYBETH', seccion: 'Cocinas y Armarios', fechaCreacion: '2025-01-13', dispoEl: '', tipo: 'Presupuesto', estado: BudgetStatus.GESTIONANDO, fechaGestion: '', total: 540.20, notas: '' },
+  { id: '513497', multiActo: '', cliente: 'EJEMPLO PRO', vendedor: 'TODOLI MIGUEL', seccion: 'Carpintería y Madera', fechaCreacion: '2025-01-12', dispoEl: '', tipo: 'Presupuesto', estado: BudgetStatus.EN_CURSO, fechaGestion: '', total: 4850.00, notas: '', proStatus: 'PRO' },
+  { id: '513544', multiActo: '', cliente: 'REFORMAS GANDIA COMEX', vendedor: 'CEREZO MAYBETH', seccion: 'Cocinas y Armarios', fechaCreacion: '2025-01-13', dispoEl: '', tipo: 'Presupuesto', estado: BudgetStatus.GESTIONANDO, fechaGestion: '', total: 1540.20, notas: '', proStatus: 'Pro Comex' },
+  { id: '513600', multiActo: '', cliente: 'CONSTRUCCIONES CARTERA', vendedor: 'FUSTER JORGE', seccion: 'Carpintería y Madera', fechaCreacion: '2025-01-14', dispoEl: '', tipo: 'Presupuesto', estado: BudgetStatus.EN_CURSO, fechaGestion: '', total: 12200.00, notas: '', proStatus: 'Pro Cartera' },
 ];

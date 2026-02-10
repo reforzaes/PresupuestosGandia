@@ -82,15 +82,38 @@ const App: React.FC = () => {
       const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
       return SELLER_DATA[sellerNameUpper]?.section || "Sin sección";
     });
-    const unique = Array.from(new Set(sectionsFromData)).filter(s => s !== "Sin sección").sort();
-    // Añadimos la sección especial "PRO" que agrupa ambos estados de la columna M
-    return ["PRO", ...unique];
+    const unique = Array.from(new Set(sectionsFromData)).filter(s => s !== "Sin sección" && s !== "PRO").sort();
+    // Añadimos PRO al principio y Sin sección al final
+    return ["PRO", ...unique, "Sin sección"];
   }, [budgets]);
 
+  // Vendedores dinámicos basados en la sección seleccionada
   const uniqueSellers = useMemo(() => {
-    const s = Array.from(new Set(budgets.map(b => b.vendedor))).filter(Boolean);
+    let sellersPool = budgets;
+    
+    if (filterSeccion && filterSeccion !== 'PRO') {
+      sellersPool = budgets.filter(b => {
+        const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
+        const currentSection = SELLER_DATA[sellerNameUpper]?.section || "Sin sección";
+        return currentSection === filterSeccion;
+      });
+    } else if (filterSeccion === 'PRO') {
+      sellersPool = budgets.filter(b => {
+        const raw = (b.proStatus || "").trim().toUpperCase();
+        return raw === 'PRO' || raw.includes('COMEX') || raw.includes('CARTERA') || raw === 'PRO CART';
+      });
+    }
+
+    const s = Array.from(new Set(sellersPool.map(b => b.vendedor))).filter(Boolean);
     return s.sort();
-  }, [budgets]);
+  }, [budgets, filterSeccion]);
+
+  // Resetear vendedor si ya no está en la lista de la sección seleccionada
+  useEffect(() => {
+    if (filterVendedor && !uniqueSellers.includes(filterVendedor)) {
+      setFilterVendedor('');
+    }
+  }, [filterSeccion, uniqueSellers]);
 
   const filteredAndSortedBudgets = useMemo(() => {
     let result = budgets.filter(b => {
@@ -99,9 +122,9 @@ const App: React.FC = () => {
       const sellerType = sellerInfo?.type || '';
       const sellerSection = sellerInfo?.section || "Sin sección";
 
-      // Normalización robusta para detectar estados PRO en columna M
       const rawProVal = (b.proStatus || "").trim().toUpperCase();
       const isProPure = rawProVal === 'PRO';
+      const isProComex = rawProVal.includes('COMEX');
       const isProCartera = rawProVal.includes('CARTERA') || rawProVal === 'PRO CART';
 
       const cleanSearch = search.trim().toLowerCase();
@@ -111,27 +134,25 @@ const App: React.FC = () => {
 
       const matchesVendedor = !filterVendedor || b.vendedor === filterVendedor;
       
-      // Lógica de Filtro TIPO (VP, VE, PRO, PRO Cartera)
       let matchesSellerType = true;
       if (filterSellerType === 'PRO') {
         matchesSellerType = isProPure;
-      } else if (filterSellerType === 'PRO Cartera') {
+      } else if (filterSellerType === 'Pro Comex') {
+        matchesSellerType = isProComex;
+      } else if (filterSellerType === 'Pro Cartera') {
         matchesSellerType = isProCartera;
       } else if (filterSellerType) {
         matchesSellerType = sellerType === filterSellerType;
       }
 
-      // Lógica de Filtro SECCIÓN
       let matchesSeccion = true;
       if (filterSeccion === 'PRO') {
-        // En sección "PRO" mostramos cualquier variante de PRO
-        matchesSeccion = isProPure || isProCartera;
+        matchesSeccion = isProPure || isProComex || isProCartera;
       } else if (filterSeccion) {
         matchesSeccion = sellerSection === filterSeccion;
       }
 
       const matchesEstado = !filterEstado || b.estado === filterEstado;
-      
       const budgetDate = b.fechaCreacion;
       const matchesFechaInicio = !filterFechaInicio || budgetDate >= filterFechaInicio;
       const matchesFechaFin = !filterFechaFin || budgetDate <= filterFechaFin;
@@ -229,7 +250,8 @@ const App: React.FC = () => {
                 <option value="VP">VP</option>
                 <option value="VE">VE</option>
                 <option value="PRO">PRO</option>
-                <option value="PRO Cartera">PRO Cartera</option>
+                <option value="Pro Comex">Pro Comex</option>
+                <option value="Pro Cartera">Pro Cartera</option>
              </select>
              <select 
                 className="px-2 py-2 bg-slate-100 rounded border-2 border-transparent focus:border-leroy-green outline-none text-[10px] font-bold transition-all min-w-[120px]"
@@ -323,7 +345,17 @@ const App: React.FC = () => {
                     <th className="px-3 py-4">Vendedor / Sección</th>
                     <th className="px-3 py-4">Notas de Gestión</th>
                     <th className="px-3 py-4">Estado</th>
-                    <th className="px-3 py-4 text-right">Total</th>
+                    <th 
+                      className="px-3 py-4 text-right cursor-pointer hover:bg-slate-100 transition-colors group border-l border-slate-100"
+                      onClick={() => requestSort('total')}
+                    >
+                      <div className="flex items-center justify-end gap-2">
+                        <span>Importe</span>
+                        <span className="text-leroy-green group-hover:scale-125 transition-transform text-[14px]">
+                          {sortConfig?.key === 'total' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                        </span>
+                      </div>
+                    </th>
                     <th className="px-3 py-4">Acción</th>
                   </tr>
                 </thead>
@@ -334,9 +366,9 @@ const App: React.FC = () => {
                     const sellerType = sellerInfo?.type || '';
                     const sellerSection = sellerInfo?.section || "Sin sección";
 
-                    // Detección de PRO en fila
                     const rawVal = (b.proStatus || "").trim().toUpperCase();
                     const isPro = rawVal === 'PRO';
+                    const isProComex = rawVal.includes('COMEX');
                     const isProCart = rawVal.includes('CARTERA') || rawVal === 'PRO CART';
                     
                     return (
@@ -352,6 +384,9 @@ const App: React.FC = () => {
                             <p className="font-bold text-leroy-dark uppercase leading-tight truncate max-w-[150px]" title={b.cliente}>{b.cliente}</p>
                             {isPro && (
                               <span className="bg-[#1f2937] text-white text-[9px] px-2 py-0.5 rounded font-black tracking-tight shadow-sm flex-shrink-0">PRO</span>
+                            )}
+                            {isProComex && (
+                              <span className="bg-[#1f2937] text-cyan-400 border border-cyan-400/30 text-[9px] px-2 py-0.5 rounded font-black tracking-tight shadow-sm flex-shrink-0 uppercase">PRO COMEX</span>
                             )}
                             {isProCart && (
                               <span className="bg-[#1f2937] text-amber-400 border border-amber-400/30 text-[9px] px-2 py-0.5 rounded font-black tracking-tight shadow-sm flex-shrink-0 uppercase">PRO CART</span>

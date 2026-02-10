@@ -77,6 +77,13 @@ const App: React.FC = () => {
     return input.split(' ')[0];
   };
 
+  // Función para normalizar nombres de vendedor y asegurar match con el mapeo
+  const normalizeSellerName = (name: string): string => {
+    if (!name) return "";
+    // Elimina espacios extras en medio y recorta extremos
+    return name.trim().replace(/\s+/g, ' ').toUpperCase();
+  };
+
   // Usamos las secciones oficiales para el filtro, asegurando que Materiales esté presente
   const uniqueSections = useMemo(() => {
     return OFFICIAL_SECTIONS.sort();
@@ -102,8 +109,8 @@ const App: React.FC = () => {
 
   const filteredAndSortedBudgets = useMemo(() => {
     let result = budgets.filter(b => {
-      const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
-      const sellerInfo = SELLER_DATA[sellerNameUpper];
+      const sellerNameNormal = normalizeSellerName(b.vendedor);
+      const sellerInfo = SELLER_DATA[sellerNameNormal];
       const sellerType = sellerInfo?.type || '';
       const sellerSection = sellerInfo?.section || "Sin sección";
 
@@ -350,8 +357,8 @@ const App: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredAndSortedBudgets.map((b) => {
-                    const sellerNameClean = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
-                    const sellerInfo = SELLER_DATA[sellerNameClean];
+                    const sellerNameNormal = normalizeSellerName(b.vendedor);
+                    const sellerInfo = SELLER_DATA[sellerNameNormal];
                     const sellerType = sellerInfo?.type || '';
                     const sellerSection = sellerInfo?.section || "Sin sección";
 

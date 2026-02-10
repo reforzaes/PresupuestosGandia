@@ -30,9 +30,9 @@ export const OFFICIAL_SECTIONS = [
   "PRO"
 ];
 
-// Mapeo exhaustivo de vendedores v6.0 - Normalizado
+// Mapeo exhaustivo de vendedores v7.0 - Basado en el último listado proporcionado
 export const SELLER_DATA: Record<string, { type: string, section: string }> = {
-  // CARPINTERÍA
+  // CARPINTERÍA Y MADERA
   'TODOLI MIGUEL': { type: 'VP', section: 'Carpintería y Madera' },
   'FUSTER JORGE': { type: 'VP', section: 'Carpintería y Madera' },
   'FEMENIA FRANK': { type: 'VP', section: 'Carpintería y Madera' },
@@ -43,9 +43,9 @@ export const SELLER_DATA: Record<string, { type: string, section: string }> = {
   'ANDRADE RODRIGO': { type: 'VE', section: 'Carpintería y Madera' },
   'PRIETO DAVID': { type: 'VE', section: 'Carpintería y Madera' },
   'MORENO JUAN': { type: 'VE', section: 'Carpintería y Madera' },
-  'ROQUE FEMENÍA': { type: 'VE', section: 'Carpintería y Madera' },
+  'FEMENIA ROQUE': { type: 'VE', section: 'Carpintería y Madera' },
 
-  // RENOVABLES / CONFORT
+  // RENOVABLES CONFORT
   'HERNANDEZ RAQUEL': { type: 'VP', section: 'Renovables Confort' },
   'KONIETZKO NATASCHA': { type: 'VP', section: 'Renovables Confort' },
   'MARTINEZ EDGAR': { type: 'VE', section: 'Renovables Confort' },
@@ -57,9 +57,9 @@ export const SELLER_DATA: Record<string, { type: string, section: string }> = {
 
   // CERÁMICA
   'DAUDER JUAN MANUEL': { type: 'VP', section: 'Cerámica' },
-  'FRANCISCO GARCIA': { type: 'VE', section: 'Cerámica' },
-  'MARIA JOSE ZEAS': { type: 'VE', section: 'Cerámica' },
-  'VICENT DONET': { type: 'Mm', section: 'Cerámica' },
+  'GARCIA FRANCISCO': { type: 'VE', section: 'Cerámica' },
+  'ZEAS MARIA JOSE': { type: 'VE', section: 'Cerámica' },
+  'DONET VICENTE ANTONIO': { type: 'Mm', section: 'Cerámica' },
   'LLINARES MIGUEL': { type: 'VE', section: 'Cerámica' },
 
   // SANITARIO
@@ -81,46 +81,47 @@ export const SELLER_DATA: Record<string, { type: string, section: string }> = {
   'VILLAR DANIEL': { type: 'VE', section: 'Cocinas y Armarios' },
   'SANCHEZ SILVIA': { type: 'VE', section: 'Cocinas y Armarios' },
   'PAREDES ANALIA': { type: 'VE', section: 'Cocinas y Armarios' },
-  'MARIA VICTORIA ROGER': { type: 'Mm', section: 'Cocinas y Armarios' },
+  'ROGER MARIA VICTORIA': { type: 'Mm', section: 'Cocinas y Armarios' },
 
   // JARDÍN
   'APARICIO ALBERTO': { type: 'VP', section: 'Jardín' },
-  'YOLANDA DIAZ': { type: 'VE', section: 'Jardín' },
-  'ANA JULIA BULLETINI': { type: 'VE', section: 'Jardín' },
-  'YUDTHI GARZON': { type: 'VE', section: 'Jardín' },
-  'JOSE MANUEL PRIETO': { type: 'MM', section: 'Jardín' },
-  'IKER ORTS': { type: 'VE', section: 'Jardín' },
-  'SANDRA ULLAN': { type: 'VE', section: 'Jardín' },
+  'DIAZ YOLANDA': { type: 'VE', section: 'Jardín' },
+  'BULLETINI ANA JULIA': { type: 'VE', section: 'Jardín' },
+  'GARZON YUDTHI': { type: 'VE', section: 'Jardín' },
+  'PRIETO JOSE MANUEL': { type: 'MM', section: 'Jardín' },
+  'ORTS IKER': { type: 'VE', section: 'Jardín' },
+  'ULLAN SANDRA': { type: 'VE', section: 'Jardín' },
 
   // MATERIALES
-  'RUTH LANGO': { type: 'VE', section: 'Materiales' },
+  'LANGO RUTH': { type: 'VE', section: 'Materiales' },
   'CLIMENT FRANCISCO': { type: 'VE', section: 'Materiales' },
-  'PABLO MARCELO CASTANO': { type: 'VE', section: 'Materiales' },
-  'JEREMIAS ESCRIVA': { type: 'Mm', section: 'Materiales' },
+  'CASTANO PABLO MARCELO': { type: 'VE', section: 'Materiales' },
+  'ESCRIVA JEREMIAS': { type: 'Mm', section: 'Materiales' },
 
   // VAD
-  'LETICIA GARCIA': { type: 'VE', section: 'VAD' },
-  'FERNANDO GARCIA': { type: 'VE', section: 'VAD' },
+  'GARCIA LETICIA': { type: 'VE', section: 'VAD' },
+  'GARCIA FERNANDO': { type: 'VE', section: 'VAD' },
   'ESTHER SIGUENZA': { type: 'VAD', section: 'VAD' },
-  'DANIEL RUBIO DIAZ': { type: 'VAD', section: 'VAD' },
-  'MICHEL FERNANDEZ': { type: 'VAD', section: 'VAD' },
-  'JAVIER PEREZ': { type: 'VAD', section: 'VAD' },
-  'VERONICA FERNANDEZ': { type: 'VAD', section: 'VAD' },
-  'JUAN ALFREDO REYES': { type: 'VAD', section: 'VAD' },
-  'LAURA RIOS': { type: 'VAD', section: 'VAD' },
-  'SORAYA APARECIDA GRAM': { type: 'VAD', section: 'VAD' },
+  'RUBIO DIAZ DANIEL': { type: 'VAD', section: 'VAD' },
+  'FERNANDEZ MICHEL': { type: 'VAD', section: 'VAD' },
+  'PEREZ JAVIER': { type: 'VAD', section: 'VAD' },
+  'FERNANDEZ VERONICA': { type: 'VAD', section: 'VAD' },
+  'REYES PICHARDO JUAN ALFREDO': { type: 'VAD', section: 'VAD' },
+  'RIOS LAURA': { type: 'VAD', section: 'VAD' },
+  'PEREIRA AINHOA': { type: 'VAD', section: 'VAD' },
+  'GRAM APARECIDA SORAYA': { type: 'VAD', section: 'VAD' },
 
   // CPC
   'MARTÍ LAURA': { type: 'CPC', section: 'CPC' },
   'MORANTE JUAN ANTONIO': { type: 'CPC', section: 'CPC' },
 
   // FERRETERÍA
-  'MARIO ISMAEL DIAZ': { type: 'VE', section: 'Ferretería' },
-  'JAVIER MONTFERRER': { type: 'VE', section: 'Ferretería' },
+  'DIAZ MARIO ISMAEL': { type: 'VE', section: 'Ferretería' },
+  'MONTFERRER JAVIER': { type: 'VE', section: 'Ferretería' },
 
   // PRO
   'CASTELLO RAFAEL': { type: 'PRO', section: 'PRO' },
-  'MARIA GORETTI PORRERO': { type: 'PRO', section: 'PRO' },
+  'PORRERO MARIA GORETTI': { type: 'PRO', section: 'PRO' },
   'CABRERA VICENTE JAVIER': { type: 'PRO', section: 'PRO' },
   'ROSELL JOSE ANTONIO': { type: 'PRO', section: 'PRO' }
 };

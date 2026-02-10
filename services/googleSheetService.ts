@@ -1,3 +1,4 @@
+
 import { Budget, BudgetStatus } from "../types";
 import { MOCK_DATA } from "../constants";
 
@@ -20,7 +21,12 @@ export const fetchBudgets = async (): Promise<Budget[]> => {
     }
 
     const data = await response.json();
-    return data;
+    
+    // Mapeo de 'En curso' (Sheet) a 'Pendiente' (Frontend)
+    return (data || []).map((b: any) => ({
+      ...b,
+      estado: (b.estado === 'En curso' || !b.estado) ? BudgetStatus.PENDIENTE : b.estado as BudgetStatus
+    }));
   } catch (error) {
     console.error("Sheet Fetch Error:", error);
     // Fallback a MOCK_DATA en caso de error de red o permisos
@@ -30,7 +36,9 @@ export const fetchBudgets = async (): Promise<Budget[]> => {
 
 export const updateBudgetOnSheet = async (id: string, status: BudgetStatus, notes: string, fechaGestion: string): Promise<boolean> => {
   try {
-    const payload = JSON.stringify({ id, status, notes, fechaGestion });
+    // Mapeo de 'Pendiente' (Frontend) a 'En curso' (Sheet) para persistencia
+    const sheetStatus = status === BudgetStatus.PENDIENTE ? 'En curso' : status;
+    const payload = JSON.stringify({ id, status: sheetStatus, notes, fechaGestion });
     
     // El modo 'no-cors' es vital para evitar errores de pre-flight con Google Apps Script en peticiones POST
     await fetch(SCRIPT_URL, {

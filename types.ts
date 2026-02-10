@@ -1,6 +1,6 @@
 
 export enum BudgetStatus {
-  EN_CURSO = 'En curso',
+  PENDIENTE = 'Pendiente', // Antes 'En curso'
   GESTIONANDO = 'Gestionando',
   TRANSFORMADO = 'Transformado',
   ANULADO = 'Anulado'

@@ -2,14 +2,14 @@
 import { BudgetStatus, Budget } from './types';
 
 export const STATUS_COLORS: Record<BudgetStatus, string> = {
-  [BudgetStatus.EN_CURSO]: '#3b82f6',
+  [BudgetStatus.PENDIENTE]: '#3b82f6',
   [BudgetStatus.GESTIONANDO]: '#f59e0b',
   [BudgetStatus.TRANSFORMADO]: '#669900', // Leroy Green
   [BudgetStatus.ANULADO]: '#ef4444',
 };
 
 export const STATUS_BG_COLORS: Record<BudgetStatus, string> = {
-  [BudgetStatus.EN_CURSO]: 'bg-blue-100 text-blue-800 border-blue-200',
+  [BudgetStatus.PENDIENTE]: 'bg-blue-100 text-blue-800 border-blue-200',
   [BudgetStatus.GESTIONANDO]: 'bg-amber-100 text-amber-800 border-amber-200',
   [BudgetStatus.TRANSFORMADO]: 'bg-green-100 text-green-800 border-green-200',
   [BudgetStatus.ANULADO]: 'bg-red-100 text-red-800 border-red-200',

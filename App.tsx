@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Budget, BudgetStatus } from './types';
-import { STATUS_BG_COLORS, SELLER_DATA } from './constants';
+import { STATUS_BG_COLORS, SELLER_DATA, OFFICIAL_SECTIONS } from './constants';
 import StatCard from './components/StatCard';
 import DashboardCharts from './components/DashboardCharts';
 import BudgetModal from './components/BudgetModal';
@@ -77,38 +77,23 @@ const App: React.FC = () => {
     return input.split(' ')[0];
   };
 
+  // Usamos las secciones oficiales para el filtro, asegurando que Materiales esté presente
   const uniqueSections = useMemo(() => {
-    const sectionsFromData = budgets.map(b => {
-      const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
-      return SELLER_DATA[sellerNameUpper]?.section || "Sin sección";
-    });
-    const unique = Array.from(new Set(sectionsFromData)).filter(s => s !== "Sin sección" && s !== "PRO").sort();
-    // Añadimos PRO al principio y Sin sección al final
-    return ["PRO", ...unique, "Sin sección"];
-  }, [budgets]);
+    return OFFICIAL_SECTIONS.sort();
+  }, []);
 
-  // Vendedores dinámicos basados en la sección seleccionada
   const uniqueSellers = useMemo(() => {
-    let sellersPool = budgets;
-    
-    if (filterSeccion && filterSeccion !== 'PRO') {
-      sellersPool = budgets.filter(b => {
-        const sellerNameUpper = b.vendedor ? b.vendedor.trim().toUpperCase() : '';
-        const currentSection = SELLER_DATA[sellerNameUpper]?.section || "Sin sección";
-        return currentSection === filterSeccion;
-      });
-    } else if (filterSeccion === 'PRO') {
-      sellersPool = budgets.filter(b => {
-        const raw = (b.proStatus || "").trim().toUpperCase();
-        return raw === 'PRO' || raw.includes('COMEX') || raw.includes('CARTERA') || raw === 'PRO CART';
-      });
+    // Si hay una sección seleccionada, filtramos los vendedores que pertenecen a ella en SELLER_DATA
+    if (filterSeccion) {
+      return Object.keys(SELLER_DATA)
+        .filter(name => SELLER_DATA[name].section === filterSeccion)
+        .sort();
     }
-
-    const s = Array.from(new Set(sellersPool.map(b => b.vendedor))).filter(Boolean);
+    // Si no hay sección, mostramos todos los vendedores únicos que hay en los presupuestos cargados
+    const s = Array.from(new Set(budgets.map(b => b.vendedor))).filter(Boolean);
     return s.sort();
   }, [budgets, filterSeccion]);
 
-  // Resetear vendedor si ya no está en la lista de la sección seleccionada
   useEffect(() => {
     if (filterVendedor && !uniqueSellers.includes(filterVendedor)) {
       setFilterVendedor('');
@@ -147,7 +132,7 @@ const App: React.FC = () => {
 
       let matchesSeccion = true;
       if (filterSeccion === 'PRO') {
-        matchesSeccion = isProPure || isProComex || isProCartera;
+        matchesSeccion = isProPure || isProComex || isProCartera || sellerSection === 'PRO';
       } else if (filterSeccion) {
         matchesSeccion = sellerSection === filterSeccion;
       }
@@ -249,6 +234,10 @@ const App: React.FC = () => {
                 <option value="">Tipo</option>
                 <option value="VP">VP</option>
                 <option value="VE">VE</option>
+                <option value="Mm">Mm</option>
+                <option value="MM">MM</option>
+                <option value="CPC">CPC</option>
+                <option value="VAD">VAD</option>
                 <option value="PRO">PRO</option>
                 <option value="Pro Comex">Pro Comex</option>
                 <option value="Pro Cartera">Pro Cartera</option>
@@ -397,7 +386,7 @@ const App: React.FC = () => {
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-bold text-slate-700 uppercase leading-tight truncate max-w-[100px]" title={b.vendedor}>{b.vendedor}</p>
                             {sellerType && (
-                              <span className={`px-1.5 py-0.5 rounded-[2px] text-[7px] font-black flex-shrink-0 ${sellerType === 'VP' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white'}`}>
+                              <span className={`px-1.5 py-0.5 rounded-[2px] text-[7px] font-black flex-shrink-0 ${sellerType === 'VP' ? 'bg-blue-600 text-white' : sellerType === 'MM' ? 'bg-purple-600 text-white' : sellerType === 'Mm' ? 'bg-purple-400 text-white' : 'bg-slate-400 text-white'}`}>
                                 {sellerType}
                               </span>
                             )}
